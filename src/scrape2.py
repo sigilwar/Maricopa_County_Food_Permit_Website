@@ -64,7 +64,7 @@ def scrape_row_data(driver, permit_id_text):
 
     return rows_data
 
-def scrape_and_save_to_csv_parallel(driver, input_csv_path, output_csv_path, start_row=10001, end_row=11000, batch_size=10):
+def scrape_and_save_to_csv_parallel(driver, input_csv_path, output_csv_path, start_row=11001, end_row=26733, batch_size=10):
     with open(input_csv_path, 'r') as input_csv_file, open(output_csv_path, 'a', newline='', encoding='utf-8') as output_csv_file:
         csv_reader = csv.DictReader(input_csv_file)
         fieldnames = csv_reader.fieldnames + ['Permit_ID_Text', 'Inspected_Date', 'Purpose', 'Grade', 'Priority_Violation', 'Cutting_Edge_Participant']
