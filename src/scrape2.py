@@ -20,25 +20,21 @@ def visit_url(driver, url):
 def quit_driver(driver):
     driver.quit()
 
-def scrape_row_data(driver):
+def scrape_row_data(driver, permit_id_text):
     table_xpath = '//*[@id="colorMe"]'
     row_elements = driver.find_elements(By.XPATH, f'{table_xpath}/tbody/tr[position() > 1]')
 
     rows_data = []
 
-    wait = WebDriverWait(driver, 30)
+    wait = WebDriverWait(driver, 60)
 
     for row_number, _ in enumerate(row_elements, start=2):
-        permit_id_text_xpath = '/html/body/div[2]/div[1]/h2[2]'
         inspected_date_xpath = f'{table_xpath}/tbody/tr[{row_number}]/td[1]/a'
         purpose_xpath = f'{table_xpath}/tbody/tr[{row_number}]/td[2]'
         grade_xpath = f'{table_xpath}/tbody/tr[{row_number}]/td[3]'
         priority_violation_xpath = f'{table_xpath}/tbody/tr[{row_number}]/td[4]'
         cutting_edge_participant_xpath = f'{table_xpath}/tbody/tr[{row_number}]/td[5]'
 
-        permit_id_text_element = wait.until(
-            EC.visibility_of_element_located((By.XPATH, permit_id_text_xpath))
-        )
         inspected_date_element = wait.until(
             EC.visibility_of_element_located((By.XPATH, inspected_date_xpath))
         )
@@ -56,7 +52,7 @@ def scrape_row_data(driver):
         )
 
         row_data = {
-            'Permit_ID_Text': permit_id_text_element.text,
+            'Permit_ID_Text': permit_id_text,
             'Inspected_Date': inspected_date_element.text,
             'Purpose': purpose_element.text,
             'Grade': grade_element.text,
@@ -68,24 +64,32 @@ def scrape_row_data(driver):
 
     return rows_data
 
-def scrape_and_save_to_csv_parallel(driver, input_csv_path, output_csv_path, batch_size=10):
+def scrape_and_save_to_csv_parallel(driver, input_csv_path, output_csv_path, start_row=10001, end_row=11000, batch_size=10):
     with open(input_csv_path, 'r') as input_csv_file, open(output_csv_path, 'a', newline='', encoding='utf-8') as output_csv_file:
         csv_reader = csv.DictReader(input_csv_file)
         fieldnames = csv_reader.fieldnames + ['Permit_ID_Text', 'Inspected_Date', 'Purpose', 'Grade', 'Priority_Violation', 'Cutting_Edge_Participant']
         csv_writer = csv.DictWriter(output_csv_file, fieldnames=fieldnames)
 
-        for _, row in enumerate(csv_reader):
+        for row_index, row in enumerate(csv_reader):
+            if row_index < start_row:
+                continue
+
+            permit_id_text = row.get(next(iter(row)))
             permit_id_link = row.get('Permit_ID_Link')
+
             if permit_id_link:
                 visit_url(driver, permit_id_link)
-                row_data = scrape_row_data(driver)
+                row_data = scrape_row_data(driver, permit_id_text)
                 if row_data:
                     for data in row_data:
                         csv_writer.writerow(data)
 
+            if end_row is not None and row_index >= end_row:
+                break
+
 # ------------- Run Script ------------- #
 if __name__ == "__main__":
-    driver = initialize_driver()
+    driver = initialize_driver() 
 
     try:
         scrape_and_save_to_csv_parallel(driver, input_csv_path, output_csv_path)
